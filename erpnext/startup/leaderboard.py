@@ -179,7 +179,7 @@ def get_all_sales_partner(date_range, company, field, limit=None):
 	filters = [["docstatus", "=", "1"], ["company", "=", company], ["sales_partner", "is", "set"]]
 	from_date, to_date = parse_date_range(date_range)
 	if from_date and to_date:
-		filters.append(["transaction_date", "between", [from_date, to_date]])
+		filters.append(["posting_date", "between", [from_date, to_date]])
 
 	return frappe.get_list(
 		"Sales Order",
