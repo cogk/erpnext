@@ -17,6 +17,7 @@ from erpnext.accounts.doctype.sales_invoice.sales_invoice import (
 )
 from erpnext.accounts.party import get_due_date, get_party_account
 from erpnext.controllers.queries import item_query as _item_query
+from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle
 from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
 
 
@@ -338,7 +339,9 @@ class POSInvoice(SalesInvoice):
 				if is_negative_stock_allowed(item_code=d.item_code):
 					return
 
-				available_stock, is_stock_item = get_stock_availability(d.item_code, d.warehouse)
+				available_stock, is_stock_item = get_stock_availability(
+					d.item_code, d.warehouse, d.product_bundle_name
+				)
 
 				item_code, warehouse, _qty = (
 					frappe.bold(d.item_code),
@@ -727,7 +730,7 @@ class POSInvoice(SalesInvoice):
 
 
 @frappe.whitelist()
-def get_stock_availability(item_code, warehouse):
+def get_stock_availability(item_code, warehouse, product_bundle_name=""):
 	if frappe.db.get_value("Item", item_code, "is_stock_item"):
 		is_stock_item = True
 		bin_qty = get_bin_qty(item_code, warehouse)
@@ -736,16 +739,19 @@ def get_stock_availability(item_code, warehouse):
 		return bin_qty - pos_sales_qty, is_stock_item
 	else:
 		is_stock_item = True
-		if frappe.db.exists("Product Bundle", {"name": item_code, "disabled": 0}):
-			return get_bundle_availability(item_code, warehouse), is_stock_item
+		if is_product_bundle(item_code, product_bundle_name=product_bundle_name):
+			return get_bundle_availability(product_bundle_name, warehouse), is_stock_item
 		else:
 			is_stock_item = False
 			# Is a service item or non_stock item
 			return 0, is_stock_item
 
 
-def get_bundle_availability(bundle_item_code, warehouse):
-	product_bundle = frappe.get_doc("Product Bundle", bundle_item_code)
+def get_bundle_availability(bundle_item_code, warehouse, product_bundle_name=""):
+	if product_bundle_name:
+		product_bundle = frappe.get_doc("Product Bundle", product_bundle_name)
+	else:
+		product_bundle = frappe.get_doc("Product Bundle", {"new_item_code": bundle_item_code})
 
 	bundle_bin_qty = 1000000
 	for item in product_bundle.items:
@@ -759,7 +765,7 @@ def get_bundle_availability(bundle_item_code, warehouse):
 		):
 			bundle_bin_qty = max_available_bundles
 
-	pos_sales_qty = get_pos_reserved_qty(bundle_item_code, warehouse)
+	pos_sales_qty = get_pos_reserved_qty(product_bundle.new_item_code, warehouse)
 	return bundle_bin_qty - pos_sales_qty
 
 

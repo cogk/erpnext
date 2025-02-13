@@ -54,7 +54,12 @@ def search_by_term(search_term, warehouse, price_list):
 				}
 			)
 
-	item_stock_qty, is_stock_item = get_stock_availability(item_code, warehouse)
+	# Get last product bundle
+	product_bundle_name = frappe.db.get_value("Product Bundle", {"new_item_code": item_code, "disabled": 0})
+
+	item_stock_qty, is_stock_item = get_stock_availability(
+		item_code, warehouse, product_bundle_name=product_bundle_name
+	)
 	item_stock_qty = item_stock_qty // item.get("conversion_factor", 1)
 	item.update({"actual_qty": item_stock_qty})
 

@@ -393,7 +393,8 @@ erpnext.PointOfSale.Controller = class {
 					this.cart.prev_action = null;
 					this.cart.toggle_item_highlight();
 				},
-				get_available_stock: (item_code, warehouse) => this.get_available_stock(item_code, warehouse),
+				get_available_stock: (item_code, warehouse, product_bundle_name) =>
+					this.get_available_stock(item_code, warehouse, product_bundle_name),
 			},
 		});
 	}
@@ -726,7 +727,9 @@ erpnext.PointOfSale.Controller = class {
 	}
 
 	async check_stock_availability(item_row, qty_needed, warehouse) {
-		const resp = (await this.get_available_stock(item_row.item_code, warehouse)).message;
+		const resp = (
+			await this.get_available_stock(item_row.item_code, warehouse, item_row.product_bundle_name)
+		).message;
 		const available_qty = resp[0];
 		const is_stock_item = resp[1];
 
@@ -776,13 +779,14 @@ erpnext.PointOfSale.Controller = class {
 		}
 	}
 
-	get_available_stock(item_code, warehouse) {
+	get_available_stock(item_code, warehouse, product_bundle_name) {
 		const me = this;
 		return frappe.call({
 			method: "erpnext.accounts.doctype.pos_invoice.pos_invoice.get_stock_availability",
 			args: {
 				item_code: item_code,
 				warehouse: warehouse,
+				product_bundle_name: product_bundle_name,
 			},
 			callback(res) {
 				if (!me.item_stock_map[item_code]) me.item_stock_map[item_code] = {};

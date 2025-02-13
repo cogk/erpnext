@@ -262,10 +262,16 @@ erpnext.PointOfSale.ItemDetails = class {
 							me.item_stock_map[me.item_row.item_code][this.value][1]
 						);
 						if (available_qty === undefined) {
-							me.events.get_available_stock(me.item_row.item_code, this.value).then(() => {
-								// item stock map is updated now reset warehouse
-								me.warehouse_control.set_value(this.value);
-							});
+							me.events
+								.get_available_stock(
+									me.item_row.item_code,
+									this.value,
+									me.item_row.product_bundle_name
+								)
+								.then(() => {
+									// item stock map is updated now reset warehouse
+									me.warehouse_control.set_value(this.value);
+								});
 						} else if (available_qty === 0 && is_stock_item) {
 							me.warehouse_control.set_value("");
 							const bold_item_code = me.item_row.item_code.bold();
