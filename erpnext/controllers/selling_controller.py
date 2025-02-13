@@ -316,7 +316,7 @@ class SellingController(StockController):
 	def get_item_list(self):
 		il = []
 		for d in self.get("items"):
-			if self.has_product_bundle(d.item_code):
+			if d.product_bundle_name or self.has_product_bundle(d.item_code):
 				for p in self.get("packed_items"):
 					if p.parent_detail_docname == d.name and p.parent_item == d.item_code:
 						# the packing details table's qty is already multiplied with parent's qty
@@ -372,6 +372,7 @@ class SellingController(StockController):
 		return il
 
 	def has_product_bundle(self, item_code):
+		print("deprecated")
 		product_bundle_items = getattr(self, "_product_bundle_items", None)
 		if product_bundle_items is None:
 			self._product_bundle_items = product_bundle_items = {}
@@ -382,6 +383,7 @@ class SellingController(StockController):
 		return product_bundle_items[item_code]
 
 	def _fetch_product_bundle_items(self, item_code):
+		print("deprecated")
 		product_bundle_items = self._product_bundle_items
 		items_to_fetch = {row.item_code for row in self.items if row.item_code not in product_bundle_items}
 		# fetch for requisite item_code even if it is not in items
