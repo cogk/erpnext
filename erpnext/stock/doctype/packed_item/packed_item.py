@@ -76,8 +76,9 @@ def make_packing_list(doc):
 	reset = reset_packing_list(doc)
 
 	for item_row in doc.get("items"):
-		if is_product_bundle(item_row.item_code):
-			for bundle_item in get_product_bundle_items(item_row.item_code):
+		product_bundle_name = item_row.get("product_bundle_name")
+		if is_product_bundle(item_row.item_code, product_bundle_name=product_bundle_name):
+			for bundle_item in get_product_bundle_items(item_row.item_code, product_bundle_name=product_bundle_name):
 				pi_row = add_packed_item_row(
 					doc=doc,
 					packing_item=bundle_item,
@@ -98,7 +99,9 @@ def make_packing_list(doc):
 		set_product_bundle_rate_amount(doc, parent_items_price)  # set price in bundle item
 
 
-def is_product_bundle(item_code: str) -> bool:
+def is_product_bundle(item_code="", *, product_bundle_name="") -> bool:
+	if product_bundle_name:
+		return bool(frappe.db.exists("Product Bundle", {"name": product_bundle_name, "disabled": 0}))
 	return bool(frappe.db.exists("Product Bundle", {"new_item_code": item_code, "disabled": 0}))
 
 
@@ -141,7 +144,7 @@ def reset_packing_list(doc):
 	return reset_table
 
 
-def get_product_bundle_items(item_code):
+def get_product_bundle_items(item_code="", *, product_bundle_name=""):
 	product_bundle = frappe.qb.DocType("Product Bundle")
 	product_bundle_item = frappe.qb.DocType("Product Bundle Item")
 
@@ -155,9 +158,14 @@ def get_product_bundle_items(item_code):
 			product_bundle_item.uom,
 			product_bundle_item.description,
 		)
-		.where((product_bundle.new_item_code == item_code) & (product_bundle.disabled == 0))
 		.orderby(product_bundle_item.idx)
 	)
+
+	if product_bundle_name:
+		query = query.where((product_bundle.name == product_bundle_name) & (product_bundle.disabled == 0))
+	else:
+		query = query.where((product_bundle.new_item_code == item_code) & (product_bundle.disabled == 0))
+
 	return query.run(as_dict=True)
 
 
@@ -325,7 +333,7 @@ def on_doctype_update():
 def get_items_from_product_bundle(row):
 	row, items = ItemDetailsCtx(json.loads(row)), []
 
-	bundled_items = get_product_bundle_items(row["item_code"])
+	bundled_items = get_product_bundle_items(row["item_code"], product_bundle_name=row.get("product_bundle_name"))
 	for item in bundled_items:
 		row.update({"item_code": item.item_code, "qty": flt(row["quantity"]) * flt(item.qty)})
 		items.append(get_item_details(row))
