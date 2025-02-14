@@ -29,7 +29,7 @@ class ProductBundle(Document):
 	# end: auto-generated types
 
 	def autoname(self):
-		self.name = self.new_item_code
+		self.name = f"{self.new_item_code}-{frappe.generate_hash(length=8)}"
 
 	def validate(self):
 		self.validate_main_item()

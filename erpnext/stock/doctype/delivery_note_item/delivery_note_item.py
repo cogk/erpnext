@@ -65,6 +65,7 @@ class DeliveryNoteItem(Document):
 		pick_list_item: DF.Data | None
 		price_list_rate: DF.Currency
 		pricing_rules: DF.SmallText | None
+		product_bundle_name: DF.Link | None
 		project: DF.Link | None
 		purchase_order: DF.Link | None
 		purchase_order_item: DF.Data | None

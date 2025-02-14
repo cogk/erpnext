@@ -56,6 +56,7 @@ class QuotationItem(Document):
 		prevdoc_doctype: DF.Link | None
 		price_list_rate: DF.Currency
 		pricing_rules: DF.SmallText | None
+		product_bundle_name: DF.Link | None
 		projected_qty: DF.Float
 		qty: DF.Float
 		rate: DF.Currency
