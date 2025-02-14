@@ -372,7 +372,6 @@ class SellingController(StockController):
 		return il
 
 	def has_product_bundle(self, item_code):
-		print("deprecated")
 		product_bundle_items = getattr(self, "_product_bundle_items", None)
 		if product_bundle_items is None:
 			self._product_bundle_items = product_bundle_items = {}
@@ -383,7 +382,6 @@ class SellingController(StockController):
 		return product_bundle_items[item_code]
 
 	def _fetch_product_bundle_items(self, item_code):
-		print("deprecated")
 		product_bundle_items = self._product_bundle_items
 		items_to_fetch = {row.item_code for row in self.items if row.item_code not in product_bundle_items}
 		# fetch for requisite item_code even if it is not in items

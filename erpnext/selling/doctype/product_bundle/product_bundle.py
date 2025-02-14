@@ -8,6 +8,8 @@ from frappe.model.document import Document
 from frappe.query_builder import Criterion
 from frappe.utils import get_link_to_form
 
+from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle
+
 
 class ProductBundle(Document):
 	# begin: auto-generated types
@@ -81,7 +83,7 @@ class ProductBundle(Document):
 
 	def validate_child_items(self):
 		for item in self.items:
-			if frappe.db.exists("Product Bundle", {"name": item.item_code, "disabled": 0}):
+			if is_product_bundle(item.item_code):
 				frappe.throw(
 					_(
 						"Row #{0}: Child Item should not be a Product Bundle. Please remove Item {1} and Save"
@@ -92,7 +94,7 @@ class ProductBundle(Document):
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_new_item_code(doctype, txt, searchfield, start, page_len, filters):
-	product_bundles = frappe.db.get_list("Product Bundle", {"disabled": 0}, pluck="name")
+	# product_bundles = frappe.db.get_list("Product Bundle", {"disabled": 0}, pluck="name")
 
 	if not searchfield or searchfield == "name":
 		searchfield = frappe.get_meta("Item").get("search_fields")
@@ -112,7 +114,7 @@ def get_new_item_code(doctype, txt, searchfield, start, page_len, filters):
 	if searchfield:
 		query = query.where(Criterion.any([item[fieldname].like(f"%{txt}%") for fieldname in searchfield]))
 
-	if product_bundles:
-		query = query.where(item.name.notin(product_bundles))
+	# if product_bundles:
+	# 	query = query.where(item.name.notin(product_bundles))
 
 	return query.run()

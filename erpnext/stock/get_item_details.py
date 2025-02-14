@@ -163,11 +163,13 @@ def remove_standard_fields(out: ItemDetails):
 
 
 def set_valuation_rate(out: ItemDetails | dict, ctx: ItemDetailsCtx):
-	if frappe.db.exists("Product Bundle", {"name": ctx.item_code, "disabled": 0}, cache=True):
-		valuation_rate = 0.0
-		bundled_items = frappe.get_doc("Product Bundle", ctx.item_code)
+	from erpnext.stock.doctype.packed_item.packed_item import get_product_bundle, is_product_bundle
 
-		for bundle_item in bundled_items.items:
+	if is_product_bundle(ctx.item_code, product_bundle_name=ctx.product_bundle_name):
+		valuation_rate = 0.0
+		product_bundle = get_product_bundle(ctx.item_code, product_bundle_name=ctx.product_bundle_name)
+
+		for bundle_item in product_bundle.items:
 			valuation_rate += flt(
 				get_valuation_rate(bundle_item.item_code, ctx.company, out.get("warehouse")).get(
 					"valuation_rate"

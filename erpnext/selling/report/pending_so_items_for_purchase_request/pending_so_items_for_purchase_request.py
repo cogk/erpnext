@@ -143,11 +143,11 @@ def get_data():
 
 
 def get_items_with_product_bundle(item_list):
-	bundled_items = frappe.get_all(
-		"Product Bundle", filters=[("new_item_code", "IN", item_list)], fields=["new_item_code"]
+	return frappe.get_all(
+		"Product Bundle",
+		filters=[("new_item_code", "IN", item_list)],
+		pluck="new_item_code",
 	)
-
-	return [d.new_item_code for d in bundled_items]
 
 
 def get_packed_items(sales_order_list):

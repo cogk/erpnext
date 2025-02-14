@@ -637,17 +637,18 @@ class Item(Document):
 
 	def validate_duplicate_product_bundles_before_merge(self, old_name, new_name):
 		"Block merge if both old and new items have product bundles."
-		old_bundle = frappe.get_value("Product Bundle", filters={"new_item_code": old_name, "disabled": 0})
-		new_bundle = frappe.get_value("Product Bundle", filters={"new_item_code": new_name, "disabled": 0})
+		pass
+		# old_bundle = frappe.get_value("Product Bundle", filters={"new_item_code": old_name, "disabled": 0})
+		# new_bundle = frappe.get_value("Product Bundle", filters={"new_item_code": new_name, "disabled": 0})
 
-		if old_bundle and new_bundle:
-			bundle_link = get_link_to_form("Product Bundle", old_bundle)
-			old_name, new_name = frappe.bold(old_name), frappe.bold(new_name)
+		# if old_bundle and new_bundle:
+		# 	bundle_link = get_link_to_form("Product Bundle", old_bundle)
+		# 	old_name, new_name = frappe.bold(old_name), frappe.bold(new_name)
 
-			msg = _("Please delete Product Bundle {0}, before merging {1} into {2}").format(
-				bundle_link, old_name, new_name
-			)
-			frappe.throw(msg, title=_("Cannot Merge"), exc=DataValidationError)
+		# 	msg = _("Please delete Product Bundle {0}, before merging {1} into {2}").format(
+		# 		bundle_link, old_name, new_name
+		# 	)
+		# 	frappe.throw(msg, title=_("Cannot Merge"), exc=DataValidationError)
 
 	def set_last_purchase_rate(self, new_name):
 		last_purchase_rate = get_last_purchase_details(new_name).get("base_net_rate", 0)

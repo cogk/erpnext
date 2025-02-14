@@ -18,6 +18,7 @@ from frappe.utils.nestedset import get_descendants_of
 from erpnext.selling.doctype.sales_order.sales_order import (
 	make_delivery_note as create_delivery_note_from_sales_order,
 )
+from erpnext.stock.doctype.packed_item.packed_item import get_product_bundle, is_product_bundle
 from erpnext.stock.doctype.serial_and_batch_bundle.serial_and_batch_bundle import (
 	get_auto_batch_nos,
 	get_picked_serial_nos,
@@ -522,7 +523,7 @@ class PickList(Document):
 				frappe.throw(f"Row #{item.idx}: Item Code is Mandatory")
 			if not cint(
 				frappe.get_cached_value("Item", item.item_code, "is_stock_item")
-			) and not frappe.db.exists("Product Bundle", {"new_item_code": item.item_code, "disabled": 0}):
+			) and not is_product_bundle(item.item_code):
 				continue
 			item_code = item.item_code
 			reference = item.sales_order_item or item.material_request_item
@@ -581,8 +582,8 @@ class PickList(Document):
 		product_bundles = self._get_product_bundles()
 		product_bundle_qty_map = self._get_product_bundle_qty_map(product_bundles.values())
 
-		for so_row, item_code in product_bundles.items():
-			picked_qty = self._compute_picked_qty_for_bundle(so_row, product_bundle_qty_map[item_code])
+		for so_row, bundle_tup in product_bundles.items():
+			picked_qty = self._compute_picked_qty_for_bundle(so_row, product_bundle_qty_map[bundle_tup])
 			item_table = "Sales Order Item"
 			already_picked = frappe.db.get_value(item_table, so_row, "picked_qty", for_update=True)
 			frappe.db.set_value(
@@ -673,8 +674,8 @@ class PickList(Document):
 
 		return query.run(as_dict=True)
 
-	def _get_product_bundles(self) -> dict[str, str]:
-		# Dict[so_item_row: item_code]
+	def _get_product_bundles(self) -> dict[str, tuple[str, str | None]]:
+		# Dict[so_item_row: (item_code, product_bundle_name)]
 		product_bundles = {}
 		for item in self.locations:
 			if not item.product_bundle_item:
@@ -682,19 +683,23 @@ class PickList(Document):
 			product_bundles[item.product_bundle_item] = frappe.db.get_value(
 				"Sales Order Item",
 				item.product_bundle_item,
-				"item_code",
+				["item_code", "product_bundle_name"],
 			)
 		return product_bundles
 
-	def _get_product_bundle_qty_map(self, bundles: list[str]) -> dict[str, dict[str, float]]:
+	def _get_product_bundle_qty_map(
+		self, bundles: list[tuple[str, str | None]]
+	) -> dict[tuple[str, str | None], dict[str, float]]:
 		# bundle_item_code: Dict[component, qty]
 		product_bundle_qty_map = {}
-		for bundle_item_code in bundles:
-			bundle = frappe.get_last_doc("Product Bundle", {"new_item_code": bundle_item_code, "disabled": 0})
-			product_bundle_qty_map[bundle_item_code] = {item.item_code: item.qty for item in bundle.items}
+		for tup in bundles:
+			item_code, product_bundle_name = tup
+			bundle = get_product_bundle(item_code, product_bundle_name=product_bundle_name)
+			# TODO: Rows with same item code are not summed correctly
+			product_bundle_qty_map[tup] = {item.item_code: item.qty for item in bundle.items}
 		return product_bundle_qty_map
 
-	def _compute_picked_qty_for_bundle(self, bundle_row, bundle_items) -> int:
+	def _compute_picked_qty_for_bundle(self, bundle_row, bundle_items: dict[str, float]) -> int:
 		"""Compute how many full bundles can be created from picked items."""
 		precision = frappe.get_precision("Stock Ledger Entry", "qty_after_transaction")
 
@@ -1221,11 +1226,11 @@ def add_product_bundles_to_delivery_note(pick_list: "PickList", delivery_note, i
 	product_bundles = pick_list._get_product_bundles()
 	product_bundle_qty_map = pick_list._get_product_bundle_qty_map(product_bundles.values())
 
-	for so_row, item_code in product_bundles.items():
+	for so_row, bundle_tup in product_bundles.items():
 		sales_order_item = frappe.get_doc("Sales Order Item", so_row)
 		dn_bundle_item = map_child_doc(sales_order_item, delivery_note, item_mapper)
 		dn_bundle_item.qty = pick_list._compute_picked_qty_for_bundle(
-			so_row, product_bundle_qty_map[item_code]
+			so_row, product_bundle_qty_map[bundle_tup]
 		)
 		update_delivery_note_item(sales_order_item, dn_bundle_item, delivery_note)
 

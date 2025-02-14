@@ -674,8 +674,8 @@ class DeliveryNote(SellingController):
 		items_list = [item.item_code for item in self.items]
 		return frappe.db.get_all(
 			"Product Bundle",
-			filters={"new_item_code": ["in", items_list], "disabled": 0},
-			pluck="name",
+			filters={"new_item_code": ["in", set(items_list)], "disabled": 0},
+			pluck="new_item_code",
 		)
 
 

@@ -608,9 +608,11 @@ class SalesOrder(SellingController):
 		per_picked = 0.0
 
 		for so_item in self.items:
-			if cint(
-				frappe.get_cached_value("Item", so_item.item_code, "is_stock_item")
-			) or so_item.product_bundle_name or self.has_product_bundle(so_item.item_code):
+			if (
+				cint(frappe.get_cached_value("Item", so_item.item_code, "is_stock_item"))
+				or so_item.product_bundle_name
+				or self.has_product_bundle(so_item.item_code)
+			):
 				total_picked_qty += flt(so_item.picked_qty)
 				total_qty += flt(so_item.stock_qty)
 
@@ -893,8 +895,8 @@ def make_material_request(source_name, target_doc=None):
 					"parent": "sales_order",
 					"delivery_date": "required_by",
 				},
-				"condition": lambda item: not frappe.db.exists(
-					"Product Bundle", {"name": item.item_code, "disabled": 0}
+				"condition": lambda item: not is_product_bundle(
+					item.item_code, product_bundle_name=item.get("product_bundle_name")
 				)
 				and get_remaining_qty(item) > 0,
 				"postprocess": update_item,
@@ -1763,12 +1765,11 @@ def get_work_order_items(sales_order, for_raw_material_request=0):
 
 		items = []
 		item_codes = [i.item_code for i in so.items]
-		product_bundle_parents = [
-			pb.new_item_code
-			for pb in frappe.get_all(
-				"Product Bundle", {"new_item_code": ["in", item_codes], "disabled": 0}, ["new_item_code"]
-			)
-		]
+		product_bundle_parents = frappe.get_all(
+			"Product Bundle",
+			{"new_item_code": ["in", item_codes], "disabled": 0},
+			pluck="new_item_code",
+		)
 
 		for table in [so.items, so.packed_items]:
 			for i in table:
