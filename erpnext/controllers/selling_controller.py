@@ -11,6 +11,7 @@ from erpnext.controllers.accounts_controller import get_taxes_and_charges
 from erpnext.controllers.sales_and_purchase_return import get_rate_for_return
 from erpnext.controllers.stock_controller import StockController
 from erpnext.stock.doctype.item.item import set_item_default
+from erpnext.stock.doctype.packed_item.packed_item import get_product_bundle
 from erpnext.stock.get_item_details import get_bin_details, get_conversion_factor
 from erpnext.stock.utils import get_incoming_rate, get_valuation_method
 
@@ -787,6 +788,10 @@ class SellingController(StockController):
 		from erpnext.controllers.buying_controller import validate_item_type
 
 		validate_item_type(self, "is_sales_item", "sales")
+
+		for item in self.items:
+			if not item.product_bundle_name and self.has_product_bundle(item.item_code):
+				item.product_bundle_name = get_product_bundle(item.item_code).name
 
 	def update_stock_reservation_entries(self) -> None:
 		"""Updates Delivered Qty in Stock Reservation Entries."""
