@@ -55,7 +55,15 @@ frappe.query_reports["Product Bundle Balance"] = {
 	],
 	initial_depth: 0,
 	formatter: function (value, row, column, data, default_formatter) {
-		value = default_formatter(value, row, column, data);
+		if (data?.product_bundle_name && column?.fieldname === "item_code") {
+			value = frappe.format(data.product_bundle_name, {
+				fieldtype: "Link",
+				options: "Product Bundle",
+			});
+		} else {
+			value = default_formatter(value, row, column, data);
+		}
+
 		if (!data.parent_item) {
 			value = $(`<span>${value}</span>`);
 			var $value = $(value).css("font-weight", "bold");

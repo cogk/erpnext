@@ -16,14 +16,13 @@ def execute(filters=None):
 		filters = frappe._dict()
 
 	columns = get_columns()
-	item_details, pb_details, parent_items, child_items = get_items(filters)
+	bundle_details, bundle_contents, bundle_names, child_items = get_items(filters)
 	stock_balance = get_stock_balance(filters, child_items)
 
 	data = []
-	for parent_item in parent_items:
-		parent_item_detail = item_details[parent_item]
-
-		required_items = pb_details[parent_item]
+	for parent_bundle in bundle_names:
+		parent_item_detail = bundle_details[parent_bundle]
+		required_items = bundle_contents[parent_bundle]
 		warehouse_company_map = {}
 		for child_item in required_items:
 			child_item_balance = stock_balance.get(child_item.item_code, frappe._dict())
@@ -34,7 +33,7 @@ def execute(filters=None):
 		for warehouse, company in warehouse_company_map.items():
 			parent_row = {
 				"indent": 0,
-				"item_code": parent_item,
+				"product_bundle_name": parent_bundle,
 				"item_name": parent_item_detail.item_name,
 				"item_group": parent_item_detail.item_group,
 				"brand": parent_item_detail.brand,
@@ -51,7 +50,7 @@ def execute(filters=None):
 				)
 				child_row = {
 					"indent": 1,
-					"parent_item": parent_item,
+					"parent_item": parent_bundle,
 					"item_code": child_item_detail.item_code,
 					"item_name": child_item_detail.item_name,
 					"item_group": child_item_detail.item_group,
@@ -122,8 +121,8 @@ def get_columns():
 
 
 def get_items(filters):
-	pb_details = frappe._dict()
-	item_details = frappe._dict()
+	bundle_contents = frappe._dict()
+	bundle_details = frappe._dict()
 
 	item = frappe.qb.DocType("Item")
 	pb = frappe.qb.DocType("Product Bundle")
@@ -133,6 +132,7 @@ def get_items(filters):
 		.inner_join(pb)
 		.on(pb.new_item_code == item.name)
 		.select(
+			pb.name.as_("product_bundle_name"),
 			item.name.as_("item_code"),
 			item.item_name,
 			pb.description,
@@ -141,6 +141,7 @@ def get_items(filters):
 			item.stock_uom,
 		)
 		.where(IfNull(item.disabled, 0) == 0)
+		.where(IfNull(pb.disabled, 0) == 0)
 	)
 
 	if item_code := filters.get("item_code"):
@@ -154,13 +155,13 @@ def get_items(filters):
 
 	parent_item_details = query.run(as_dict=True)
 
-	parent_items = []
+	bundle_names = []
 	for d in parent_item_details:
-		parent_items.append(d.item_code)
-		item_details[d.item_code] = d
+		bundle_names.append(d.product_bundle_name)
+		bundle_details[d.product_bundle_name] = d
 
 	child_item_details = []
-	if parent_items:
+	if bundle_names:
 		item = frappe.qb.DocType("Item")
 		pb = frappe.qb.DocType("Product Bundle")
 		pbi = frappe.qb.DocType("Product Bundle Item")
@@ -172,7 +173,7 @@ def get_items(filters):
 			.inner_join(item)
 			.on(item.name == pbi.item_code)
 			.select(
-				pb.new_item_code.as_("parent_item"),
+				pb.name.as_("product_bundle_name"),
 				pbi.item_code,
 				item.item_name,
 				pbi.description,
@@ -182,18 +183,16 @@ def get_items(filters):
 				pbi.uom,
 				pbi.qty,
 			)
-			.where(pb.new_item_code.isin(parent_items))
+			.where(pb.name.isin(bundle_names))
 		).run(as_dict=1)
 
 	child_items = set()
 	for d in child_item_details:
-		if d.item_code != d.parent_item:
-			pb_details.setdefault(d.parent_item, []).append(d)
-			child_items.add(d.item_code)
-			item_details[d.item_code] = d
+		bundle_contents.setdefault(d.product_bundle_name, []).append(d)
+		child_items.add(d.item_code)
 
 	child_items = list(child_items)
-	return item_details, pb_details, parent_items, child_items
+	return bundle_details, bundle_contents, bundle_names, child_items
 
 
 def get_stock_balance(filters, items):
