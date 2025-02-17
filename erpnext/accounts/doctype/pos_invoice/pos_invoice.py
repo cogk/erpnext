@@ -17,7 +17,7 @@ from erpnext.accounts.doctype.sales_invoice.sales_invoice import (
 )
 from erpnext.accounts.party import get_due_date, get_party_account
 from erpnext.controllers.queries import item_query as _item_query
-from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle
+from erpnext.stock.doctype.packed_item.packed_item import get_product_bundle, is_product_bundle
 from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
 
 
@@ -740,7 +740,9 @@ def get_stock_availability(item_code, warehouse, product_bundle_name=""):
 	else:
 		is_stock_item = True
 		if is_product_bundle(item_code, product_bundle_name=product_bundle_name):
-			return get_bundle_availability(product_bundle_name, warehouse), is_stock_item
+			return get_bundle_availability(
+				item_code, warehouse, product_bundle_name=product_bundle_name
+			), is_stock_item
 		else:
 			is_stock_item = False
 			# Is a service item or non_stock item
@@ -748,10 +750,7 @@ def get_stock_availability(item_code, warehouse, product_bundle_name=""):
 
 
 def get_bundle_availability(bundle_item_code, warehouse, product_bundle_name=""):
-	if product_bundle_name:
-		product_bundle = frappe.get_doc("Product Bundle", product_bundle_name)
-	else:
-		product_bundle = frappe.get_doc("Product Bundle", {"new_item_code": bundle_item_code})
+	product_bundle = get_product_bundle(bundle_item_code, product_bundle_name=product_bundle_name)
 
 	bundle_bin_qty = 1000000
 	for item in product_bundle.items:
