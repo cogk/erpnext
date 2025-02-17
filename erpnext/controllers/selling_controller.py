@@ -790,8 +790,15 @@ class SellingController(StockController):
 		validate_item_type(self, "is_sales_item", "sales")
 
 		for item in self.items:
-			if not item.product_bundle_name and self.has_product_bundle(item.item_code):
-				item.product_bundle_name = get_product_bundle(item.item_code).name
+			bundle = None
+			if self.has_product_bundle(item.item_code):
+				bundle = get_product_bundle(item.item_code, product_bundle_name=item.product_bundle_name)
+				if bundle.new_item_code != item.item_code:
+					# The row item and the bundle's item are mismatched, override the product_bundle_name
+					bundle = get_product_bundle(item.item_code)  # Fetch any bundle of the correct item
+
+			# If there is a bundle, write its name, if not clear the field.
+			item.product_bundle_name = bundle.name if bundle else None
 
 	def update_stock_reservation_entries(self) -> None:
 		"""Updates Delivered Qty in Stock Reservation Entries."""
