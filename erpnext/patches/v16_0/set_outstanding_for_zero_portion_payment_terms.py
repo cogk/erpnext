@@ -1,5 +1,6 @@
 import frappe
 from frappe.query_builder import DocType
+from pypika.terms import Bracket
 
 
 def execute():
@@ -8,17 +9,19 @@ def execute():
 		parent = DocType(parenttype)
 		settled = ps.paid_amount + ps.discounted_amount
 		outstanding = ps.payment_amount - settled
+		conversion_rate = Bracket(
+			frappe.qb.from_(parent).select(parent.conversion_rate).where(parent.name == ps.parent)
+		)
+		submitted_parents = frappe.qb.from_(parent).select(parent.name).where(parent.docstatus == 1)
 
 		(
 			frappe.qb.update(ps)
-			.join(parent)
-			.on(ps.parent == parent.name)
 			.set(ps.outstanding, outstanding)
-			.set(ps.base_payment_amount, ps.payment_amount * parent.conversion_rate)
-			.set(ps.base_outstanding, outstanding * parent.conversion_rate)
+			.set(ps.base_payment_amount, ps.payment_amount * conversion_rate)
+			.set(ps.base_outstanding, outstanding * conversion_rate)
 			.where(
 				(ps.parenttype == parenttype)
-				& (parent.docstatus == 1)
+				& ps.parent.isin(submitted_parents)
 				& (ps.invoice_portion == 0)
 				& (ps.outstanding == 0)
 				& (settled < ps.payment_amount)
